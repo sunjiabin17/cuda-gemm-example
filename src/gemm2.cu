@@ -7,8 +7,8 @@ template <typename T>
 __global__ void gemm_v1(size_t m, size_t n, size_t k, T alpha, const T *A,
                         size_t lda, const T *B, size_t ldb, T beta, T *C,
                         size_t ldc) {
-  size_t C_row_idx = blockIdx.x * blockDim.x + threadIdx.x;
-  size_t C_col_idx = blockIdx.y * blockDim.y + threadIdx.y;
+  size_t C_row_idx = blockIdx.y * blockDim.y + threadIdx.y;
+  size_t C_col_idx = blockIdx.x * blockDim.x + threadIdx.x;
 
   if (C_row_idx < m and C_col_idx < n) {
     T sum = static_cast<T>(0);
