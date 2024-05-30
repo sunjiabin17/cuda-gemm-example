@@ -46,7 +46,7 @@ void launch_cublas_gemm(size_t m, size_t n, size_t k, const float* alpha, const 
 
 }  // namespace gemm
 
-bool compare(const float *A, const float *B, size_t size) {
+bool compare(const float *A, const float *B, const size_t& size) {
   for (size_t i = 0; i < size; i++) {
     if (std::abs(A[i] - B[i]) > 1e-6) {
       return false;
