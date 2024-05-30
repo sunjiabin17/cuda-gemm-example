@@ -41,7 +41,7 @@ void launch_cublas_gemm(size_t m, size_t n, size_t k, const float* alpha, const 
                         size_t ldc) {
   cublasHandle_t handle;
   cublasCreate(&handle);
-  cublasSgemm(handle, CUBLAS_OP_N, CUBLAS_OP_N, m, n, k, alpha, B, ldb, A, lda, beta, C, ldc);
+  cublasSgemm(handle, CUBLAS_OP_N, CUBLAS_OP_N, n, m, k, alpha, B, ldb, A, lda, beta, C, ldc);
   cublasDestroy(handle);
 }
 
@@ -58,9 +58,9 @@ bool compare(const float *A, const float *B, size_t size) {
 using T = float;
 
 int main(int argc, char **argv) {
-  size_t m = 1024;
+  size_t m = 2048;
   size_t n = 1024;
-  size_t k = 1024;
+  size_t k = 512;
 
   T *A = new T[m * k];
   T *B = new T[k * n];
