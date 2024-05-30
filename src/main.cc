@@ -34,7 +34,6 @@ void launch_gemm_v3(size_t m, size_t n, size_t k, const T* alpha, const T *A,
                     size_t lda, const T *B, size_t ldb, const T* beta, T *C,
                     size_t ldc, cudaStream_t stream);
 
-}  // namespace gemm
 
 void launch_cublas_gemm(size_t m, size_t n, size_t k, const float* alpha, const float *A,
                         size_t lda, const float *B, size_t ldb, const float* beta, float *C,
@@ -44,6 +43,8 @@ void launch_cublas_gemm(size_t m, size_t n, size_t k, const float* alpha, const 
   cublasSgemm(handle, CUBLAS_OP_N, CUBLAS_OP_N, n, m, k, alpha, B, ldb, A, lda, beta, C, ldc);
   cublasDestroy(handle);
 }
+
+}  // namespace gemm
 
 bool compare(const float *A, const float *B, size_t size) {
   for (size_t i = 0; i < size; i++) {
@@ -93,7 +94,7 @@ int main(int argc, char **argv) {
   size_t ldb = n;
   size_t ldc = n;
 
-  launch_cublas_gemm(m, n, k, &alpha, dA, lda, dB, ldb, &beta, dC1, ldc);
+  gemm::launch_cublas_gemm(m, n, k, &alpha, dA, lda, dB, ldb, &beta, dC1, ldc);
 
   cudaStream_t stream;
   cudaStreamCreate(&stream);
