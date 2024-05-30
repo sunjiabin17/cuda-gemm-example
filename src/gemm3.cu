@@ -1,5 +1,4 @@
 #include <cuda_runtime.h>
-
 #include <algorithm>
 #include <random>
 #include <vector>
@@ -73,7 +72,7 @@ __global__ void gemm_v3(size_t m, size_t n, size_t k, T alpha, const T *A,
                         size_t lda, const T *B, size_t ldb, T beta, T *C,
                         size_t ldc) {
   constexpr size_t NUM_THREADS = BLOCK_TILE_SIZE_M * BLOCK_TILE_SIZE_N;
-  const size_t thread_linear_idx = blockIdx.y * blockDim.x + threadIdx.x;
+  const size_t thread_linear_idx = threadIdx.y * blockDim.x + threadIdx.x;
 
   const size_t C_row_idx = blockDim.y * blockIdx.y + threadIdx.y;
   const size_t C_col_idx = blockDim.x * blockIdx.x + threadIdx.x;
@@ -106,9 +105,10 @@ __global__ void gemm_v3(size_t m, size_t n, size_t k, T alpha, const T *A,
   }
 }
 
+namespace gemm {
 template <typename T>
-void launch_gemm_v3(size_t m, size_t n, size_t k, T alpha, const T *A,
-                    size_t lda, const T *B, size_t ldb, T beta, T *C,
+void launch_gemm_v3(size_t m, size_t n, size_t k, const T* alpha, const T *A,
+                    size_t lda, const T *B, size_t ldb, const T* beta, T *C,
                     size_t ldc, cudaStream_t stream) {
   constexpr unsigned int BLOCK_TILE_SIZE_M = 32U;
   constexpr unsigned int BLOCK_TILE_SIZE_N = 32U;
@@ -116,65 +116,23 @@ void launch_gemm_v3(size_t m, size_t n, size_t k, T alpha, const T *A,
   constexpr unsigned int NUM_THREADS = (BLOCK_TILE_SIZE_M * BLOCK_TILE_SIZE_N);
   static_assert(BLOCK_TILE_SIZE_M * BLOCK_TILE_SIZE_K % NUM_THREADS == 0U);
   static_assert(BLOCK_TILE_SIZE_K * BLOCK_TILE_SIZE_N % NUM_THREADS == 0U);
-  const dim3 block_dim{BLOCK_TILE_SIZE_N, BLOCK_TILE_SIZE_M, 1};
+  const dim3 block_dim{BLOCK_TILE_SIZE_N, BLOCK_TILE_SIZE_M, 1U};
   const dim3 grid_dim{
-      (static_cast<unsigned int>(n) + block_dim.x - 1) / block_dim.x,
-      (static_cast<unsigned int>(m) + block_dim.y - 1) / block_dim.y, 1};
+      (static_cast<unsigned int>(n) + block_dim.x - 1U) / block_dim.x,
+      (static_cast<unsigned int>(m) + block_dim.y - 1U) / block_dim.y, 1U};
   gemm_v3<T, BLOCK_TILE_SIZE_M, BLOCK_TILE_SIZE_N, BLOCK_TILE_SIZE_K>
-      <<<grid_dim, block_dim, 0, stream>>>(m, n, k, alpha, A, lda, B, ldb, beta,
+      <<<grid_dim, block_dim, 0, stream>>>(m, n, k, *alpha, A, lda, B, ldb, *beta,
                                            C, ldc);
 }
 
-using T = float;
+template void launch_gemm_v3<float>(size_t m, size_t n, size_t k, const float* alpha,
+                                    const float *A, size_t lda, const float *B,
+                                    size_t ldb, const float* beta, float *C,
+                                    size_t ldc, cudaStream_t stream);
 
-int main(int argc, char **argv) {
-  size_t m = 1024;
-  size_t n = 1024;
-  size_t k = 1024;
+template void launch_gemm_v3<double>(size_t m, size_t n, size_t k, const double* alpha,
+                                     const double *A, size_t lda, const double *B,
+                                     size_t ldb, const double* beta, double *C,
+                                     size_t ldc, cudaStream_t stream);
 
-  T *A = new T[m * k];
-  T *B = new T[k * n];
-  T *C = new T[m * n];
-  T *C1 = new T[m * n];
-
-  // set random seed
-  // srand((unsigned)time(NULL));
-
-  std::generate(A, A + m * k, []() { return (T)(rand() % 10); });
-  std::generate(B, B + k * n, []() { return (T)(rand() % 10); });
-  std::fill(C, C + m * n, 0.0f);
-
-  T *dA, *dB, *dC;
-  cudaMalloc(&dA, m * k * sizeof(T));
-  cudaMalloc(&dB, k * n * sizeof(T));
-  cudaMalloc(&dC, m * n * sizeof(T));
-
-  cudaMemcpy(dA, A, m * k * sizeof(T), cudaMemcpyHostToDevice);
-  cudaMemcpy(dB, B, k * n * sizeof(T), cudaMemcpyHostToDevice);
-  cudaMemcpy(dC, C, m * n * sizeof(T), cudaMemcpyHostToDevice);
-
-  T alpha = 1.f;
-  T beta = 0.f;
-
-  size_t lda = k;
-  size_t ldb = n;
-  size_t ldc = n;
-
-  cudaStream_t stream;
-  cudaStreamCreate(&stream);
-
-  launch_gemm_v3(m, n, k, alpha, A, lda, B, ldb, beta, C, ldc, stream);
-
-  // [TODO] something
-
-  cudaFree(dA);
-  cudaFree(dB);
-  cudaFree(dC);
-
-  delete[] A;
-  delete[] B;
-  delete[] C;
-  delete[] C1;
-
-  return 0;
-}
+} // namespace gemm
